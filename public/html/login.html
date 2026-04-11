@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — TimeFlow</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="auth-wrapper">
+    <div class="auth-card">
+      <!-- Logo -->
+      <div class="auth-logo">
+        <div class="logo-icon">⏱</div>
+        <div class="logo-text">Time<span>Flow</span></div>
+      </div>
+
+      <!-- Heading -->
+      <h1 class="auth-title">Welcome back</h1>
+      <p class="auth-subtitle">Sign in to your productivity dashboard</p>
+
+      <!-- Alert messages -->
+      <div class="alert alert-error" id="alertMsg"></div>
+      <div class="alert alert-success" id="successMsg"></div>
+
+      <!-- Login Form -->
+      <form id="loginForm" novalidate>
+        <div class="form-group">
+          <label class="form-label" for="email">Email Address</label>
+          <input
+            class="form-input"
+            type="email"
+            id="email"
+            name="email"
+            placeholder="you@example.com"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">Password</label>
+          <input
+            class="form-input"
+            type="password"
+            id="password"
+            name="password"
+            placeholder="Enter your password"
+            required
+          >
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="loginBtn">
+          Sign In
+        </button>
+      </form>
+
+      <div class="auth-link">
+        Don't have an account? <a href="/register">Create one →</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/auth.js"></script>
+</body>
+</html>
