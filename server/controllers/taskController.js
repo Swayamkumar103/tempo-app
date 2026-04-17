@@ -117,6 +117,9 @@ export const getStats = async (req, res) => {
       });
     }
 
+    // Count completed tasks for today
+    const completedCount = todayTasks.filter(t => t.completed).length;
+
     res.status(200).json({
       stats: {
         totalTasks,
@@ -124,6 +127,7 @@ export const getStats = async (req, res) => {
         productiveMinutes,
         breakMinutes,
         productivityPercent,
+        completedCount,
         categoryBreakdown,
         last7Days,
         totalHours: (totalMinutes / 60).toFixed(1)
@@ -189,5 +193,50 @@ export const deleteTask = async (req, res) => {
     res.status(200).json({ message: 'Task deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Server error deleting task' });
+  }
+};
+
+// --- TOGGLE task completion status ---
+// PATCH /api/tasks/:id/toggle
+export const toggleComplete = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Validate that id is a valid MongoDB ObjectId format
+    if (!id || id.length !== 24) {
+      return res.status(400).json({ message: 'Invalid task ID format' });
+    }
+
+    const task = await Task.findById(id);
+
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    // Security: only the owner can toggle their task
+    if (task.userId.toString() !== req.user.id.toString()) {
+      return res.status(403).json({ message: 'Not authorized to update this task' });
+    }
+
+    // Flip the completed status
+    const newStatus = !task.completed;
+
+    const updatedTask = await Task.findByIdAndUpdate(
+      id,
+      {
+        completed:   newStatus,
+        completedAt: newStatus ? new Date() : null
+      },
+      { new: true }  // return the updated document
+    );
+
+    return res.status(200).json({
+      message: newStatus ? 'Task marked as completed!' : 'Task marked as incomplete.',
+      task: updatedTask
+    });
+
+  } catch (error) {
+    console.error('Toggle complete error:', error.message);
+    return res.status(500).json({ message: 'Server error toggling task completion' });
   }
 };

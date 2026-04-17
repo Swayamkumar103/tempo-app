@@ -9,7 +9,6 @@ import connectDB from './server/config/db.js';
 import userRoutes from './server/routes/userRoutes.js';
 import taskRoutes from './server/routes/taskRoutes.js';
 
-
 // --- Setup __dirname for ES modules ---
 // (ES modules don't have __dirname by default)
 const __filename = fileURLToPath(import.meta.url);
@@ -22,7 +21,12 @@ connectDB();
 const app = express();
 
 // --- Middleware ---
-app.use(cors());                     // Allow cross-origin requests
+// Configure CORS to explicitly allow all methods including PATCH
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 app.use(express.json());             // Parse JSON request bodies
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
 

@@ -8,29 +8,32 @@ import {
   getTasks,
   getStats,
   updateTask,
-  deleteTask
+  deleteTask,
+  toggleComplete
 } from '../controllers/taskController.js';
 import protect from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
 // Apply protect middleware to ALL task routes
-// This means every request must have a valid JWT token
 router.use(protect);
 
-// GET  /api/tasks/stats → Dashboard statistics
+// GET /api/tasks/stats → Dashboard statistics
+// ⚠️ MUST be defined BEFORE /:id routes so 'stats' is not treated as an id
 router.get('/stats', getStats);
 
-// GET  /api/tasks       → Get all tasks for logged-in user
-// POST /api/tasks       → Create a new task
-router.route('/')
-  .get(getTasks)
-  .post(createTask);
+// GET  /api/tasks  → Get all tasks
+// POST /api/tasks  → Create a new task
+router.get('/', getTasks);
+router.post('/', createTask);
+
+// PATCH /api/tasks/:id/toggle → Toggle completed status
+// ⚠️ MUST be defined BEFORE /:id routes so '/toggle' is not swallowed as an id param
+router.patch('/:id/toggle', toggleComplete);
 
 // PUT    /api/tasks/:id → Update a specific task
 // DELETE /api/tasks/:id → Delete a specific task
-router.route('/:id')
-  .put(updateTask)
-  .delete(deleteTask);
+router.put('/:id', updateTask);
+router.delete('/:id', deleteTask);
 
 export default router;
