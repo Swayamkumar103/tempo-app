@@ -237,7 +237,7 @@ body::after {
   display:flex; flex-direction:column;
   position:fixed; top:0; left:0; bottom:0;
   overflow-y:auto; transition:transform var(--tr);
-  z-index:100;
+  z-index:500;
 }
 
 .sidebar-logo {
@@ -546,7 +546,7 @@ tr:hover td { background:rgba(255,255,255,0.025); }
   position: fixed;
   top: 0.85rem;
   left: 0.85rem;
-  z-index: 300;
+  z-index: 600;   /* highest — always visible above sidebar and overlay */
   background: rgba(13,13,26,0.92);
   border: 1px solid var(--glass-border);
   color: var(--txt);
@@ -570,23 +570,25 @@ tr:hover td { background:rgba(255,255,255,0.025); }
   color: var(--amber);
 }
 
-/* Dark overlay behind sidebar on mobile */
+/* Dark overlay behind sidebar — NO blur, just dark tint */
 .sidebar-overlay {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.65);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
-  z-index: 99;
+  background: rgba(0, 0, 0, 0.55);
+  /* NO blur — plain dark tint only */
+  z-index: 400;   /* below sidebar(500) but above page content */
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.25s ease;
   cursor: pointer;
 }
 
-.sidebar-overlay.visible {
-  display: block;
-  opacity: 1;
+/* Only activate overlay on mobile screens where sidebar overlaps content */
+@media (max-width: 768px) {
+  .sidebar-overlay.visible {
+    display: block;
+    opacity: 1;
+  }
 }
 
 ::-webkit-scrollbar { width:5px; height:5px; }
@@ -609,7 +611,7 @@ tr:hover td { background:rgba(255,255,255,0.025); }
     transform: translateX(-100%);
     transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1),
                 box-shadow 0.32s ease;
-    z-index: 200;
+    z-index: 500;  /* must be above overlay (400) so nav items are clickable */
   }
 
   /* Slide in when .open class added */

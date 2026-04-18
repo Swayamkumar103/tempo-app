@@ -19,6 +19,10 @@ const protect = async (req, res, next) => {
       // Attach user info to the request object for use in controllers
       req.user = await User.findById(decoded.id).select('-password');
 
+      if (!req.user) {
+        return res.status(401).json({ message: 'User no longer exists. Please log in again.' });
+      }
+
       next(); // Move on to the actual route handler
     } catch (error) {
       res.status(401).json({ message: 'Token is invalid or expired. Please log in again.' });

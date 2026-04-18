@@ -31,7 +31,7 @@ export const createTask = async (req, res) => {
 
     // Create task linked to the logged-in user
     const task = await Task.create({
-      userId: req.user.id,   // From auth middleware
+      userId: (req.user._id || req.user.id),   // From auth middleware
       taskName,
       category,
       startTime,
@@ -52,7 +52,7 @@ export const createTask = async (req, res) => {
 export const getTasks = async (req, res) => {
   try {
     // Optional: filter by date via query string (?date=2024-01-15)
-    const filter = { userId: req.user.id };
+    const filter = { userId: (req.user._id || req.user.id) };
     if (req.query.date) filter.date = req.query.date;
     if (req.query.category) filter.category = req.query.category;
 
@@ -71,7 +71,7 @@ export const getStats = async (req, res) => {
     const today = new Date().toISOString().split('T')[0]; // "YYYY-MM-DD"
 
     // Get today's tasks for this user
-    const todayTasks = await Task.find({ userId: req.user.id, date: today });
+    const todayTasks = await Task.find({ userId: (req.user._id || req.user.id), date: today });
 
     // Calculate totals
     const totalTasks = todayTasks.length;
@@ -103,7 +103,7 @@ export const getStats = async (req, res) => {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const dateStr = d.toISOString().split('T')[0];
-      const dayTasks = await Task.find({ userId: req.user.id, date: dateStr });
+      const dayTasks = await Task.find({ userId: (req.user._id || req.user.id), date: dateStr });
       const dayTotal = dayTasks.reduce((s, t) => s + t.duration, 0);
       const dayProductive = dayTasks
         .filter(t => ['study', 'work', 'exercise'].includes(t.category))
@@ -150,7 +150,7 @@ export const updateTask = async (req, res) => {
     }
 
     // Security check: ensure the task belongs to the requesting user
-    if (task.userId.toString() !== req.user.id) {
+    if (task.userId.toString() !== (req.user._id || req.user.id).toString()) {
       return res.status(403).json({ message: 'Not authorized to edit this task' });
     }
 
@@ -185,7 +185,7 @@ export const deleteTask = async (req, res) => {
     }
 
     // Security check: ensure the task belongs to the requesting user
-    if (task.userId.toString() !== req.user.id) {
+    if (task.userId.toString() !== (req.user._id || req.user.id).toString()) {
       return res.status(403).json({ message: 'Not authorized to delete this task' });
     }
 
@@ -200,34 +200,33 @@ export const deleteTask = async (req, res) => {
 // PATCH /api/tasks/:id/toggle
 export const toggleComplete = async (req, res) => {
   try {
-    const { id } = req.params;
+    const taskId = req.params.id;
 
-    // Validate that id is a valid MongoDB ObjectId format
-    if (!id || id.length !== 24) {
-      return res.status(400).json({ message: 'Invalid task ID format' });
-    }
+    // Get logged-in user's ID — works whether stored as _id or id
+    const userId = (req.user._id || req.user.id).toString();
 
-    const task = await Task.findById(id);
+    // Find the task
+    const task = await Task.findById(taskId);
 
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Security: only the owner can toggle their task
-    if (task.userId.toString() !== req.user.id.toString()) {
+    // Security check — task must belong to the logged-in user
+    if (task.userId.toString() !== userId) {
       return res.status(403).json({ message: 'Not authorized to update this task' });
     }
 
-    // Flip the completed status
+    // Flip completed: false → true, true → false
     const newStatus = !task.completed;
 
     const updatedTask = await Task.findByIdAndUpdate(
-      id,
+      taskId,
       {
         completed:   newStatus,
         completedAt: newStatus ? new Date() : null
       },
-      { new: true }  // return the updated document
+      { new: true }
     );
 
     return res.status(200).json({
@@ -236,7 +235,7 @@ export const toggleComplete = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Toggle complete error:', error.message);
-    return res.status(500).json({ message: 'Server error toggling task completion' });
+    console.error('toggleComplete error:', error.message);
+    return res.status(500).json({ message: 'Server error. Please try again.' });
   }
 };

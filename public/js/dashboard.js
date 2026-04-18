@@ -68,24 +68,42 @@ function selectCategory(cat, btn) {
 }
 
 // ─── SIDEBAR MOBILE CONTROLS ─────────────────────────────────
+
+// Check if we are on mobile (sidebar is hidden by default)
+function isMobileView() {
+  return window.innerWidth <= 768;
+}
+
 function toggleSidebar() {
-  const sidebar  = document.querySelector('.sidebar');
-  const overlay  = document.getElementById('sidebarOverlay');
-  const btn      = document.getElementById('mobileToggle');
-  const isOpen   = sidebar.classList.contains('open');
+  // Only run on mobile — on desktop sidebar is always visible
+  if (!isMobileView()) return;
+
+  const sidebar = document.querySelector('.sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  const btn     = document.getElementById('mobileToggle');
+  const isOpen  = sidebar.classList.contains('open');
 
   if (isOpen) {
-    closeSidebar();
+    // Close it
+    sidebar.classList.remove('open');
+    overlay.classList.remove('visible');
+    btn.textContent = '☰';
+    btn.setAttribute('aria-label', 'Toggle navigation');
+    document.body.style.overflow = '';
   } else {
+    // Open it
     sidebar.classList.add('open');
     overlay.classList.add('visible');
-    btn.textContent = '✕';   // change icon to close
+    btn.textContent = '✕';
     btn.setAttribute('aria-label', 'Close navigation');
-    document.body.style.overflow = 'hidden'; // prevent background scroll
+    document.body.style.overflow = 'hidden'; // stop background scroll
   }
 }
 
 function closeSidebar() {
+  // Only run on mobile
+  if (!isMobileView()) return;
+
   const sidebar = document.querySelector('.sidebar');
   const overlay = document.getElementById('sidebarOverlay');
   const btn     = document.getElementById('mobileToggle');
@@ -96,6 +114,19 @@ function closeSidebar() {
   btn.setAttribute('aria-label', 'Toggle navigation');
   document.body.style.overflow = '';
 }
+
+// When user resizes from mobile to desktop, clean up any open state
+window.addEventListener('resize', () => {
+  if (!isMobileView()) {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    const btn     = document.getElementById('mobileToggle');
+    sidebar.classList.remove('open');
+    overlay.classList.remove('visible');
+    if (btn) btn.textContent = '☰';
+    document.body.style.overflow = '';
+  }
+});
 
 // ─── SECTION NAV ─────────────────────────────────────────────
 function showSection(id, navBtn) {
@@ -319,31 +350,55 @@ function showAlert(el, msg) {
 
 // ─── TOGGLE COMPLETE ─────────────────────────────────────────
 async function toggleComplete(taskId, btn) {
-  // Optimistic UI: immediately reflect change
-  const isCurrentlyDone = btn.classList.contains('completed');
-  const row             = btn.closest('tr');
+  // Prevent double-clicking while request is in progress
+  if (btn.disabled) return;
+  btn.disabled = true;
 
-  btn.classList.toggle('completed', !isCurrentlyDone);
-  btn.classList.add('just-completed');
-  row.classList.toggle('completed-row', !isCurrentlyDone);
-  setTimeout(() => btn.classList.remove('just-completed'), 500);
+  const row = btn.closest('tr');
 
   try {
+    // Step 1: Call the server FIRST — no optimistic update
     const res  = await fetch(`/api/tasks/${taskId}/toggle`, {
       method: 'PATCH',
       headers: authHeaders(),
-      body: JSON.stringify({})  // some servers need a body with PATCH
+      body: JSON.stringify({})
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message);
 
+    // Step 2: Parse the response
+    const data = await res.json();
+
+    // Step 3: If server returned an error, show it and stop
+    if (!res.ok) {
+      showToast(`❌ ${data.message || 'Failed to update task'}`, 'error');
+      btn.disabled = false;
+      return;
+    }
+
+    // Step 4: Server confirmed the new state — now update the UI
     const isNowDone = data.task.completed;
 
-    // Confirm final state from server
-    btn.classList.toggle('completed', isNowDone);
-    btn.setAttribute('title', isNowDone ? 'Mark as incomplete' : 'Mark as complete');
-    row.classList.toggle('completed-row', isNowDone);
+    // Update button appearance
+    if (isNowDone) {
+      btn.classList.add('completed');
+    } else {
+      btn.classList.remove('completed');
+    }
 
+    // Animate the button
+    btn.classList.add('just-completed');
+    setTimeout(() => btn.classList.remove('just-completed'), 500);
+
+    // Update button tooltip
+    btn.setAttribute('title', isNowDone ? 'Mark as incomplete' : 'Mark as complete');
+
+    // Update row strikethrough style
+    if (isNowDone) {
+      row.classList.add('completed-row');
+    } else {
+      row.classList.remove('completed-row');
+    }
+
+    // Step 5: Show toast and confetti only on success
     if (isNowDone) {
       showToast('🎉 Task completed! Great work!', 'success');
       spawnConfetti(btn);
@@ -351,13 +406,15 @@ async function toggleComplete(taskId, btn) {
       showToast('↩️ Task marked as incomplete', 'info');
     }
 
-    loadStats(); // refresh counters & progress bar silently
+    // Step 6: Refresh stats on overview
+    loadStats();
 
   } catch (err) {
-    // Revert optimistic update on error
-    btn.classList.toggle('completed', isCurrentlyDone);
-    row.classList.toggle('completed-row', isCurrentlyDone);
-    showToast(`❌ ${err.message}`, 'error');
+    // Network error (no internet, server down etc.)
+    showToast('❌ Could not connect to server. Check your connection.', 'error');
+  } finally {
+    // Always re-enable the button
+    btn.disabled = false;
   }
 }
 
